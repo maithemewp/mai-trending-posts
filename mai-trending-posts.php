@@ -195,13 +195,14 @@ final class Mai_Trending_Posts_Plugin {
 	function run() {
 		// Register shortcode no matter what.
 		add_shortcode( 'mai_views', [ $this, 'add_shortcode' ] );
+		// Modify query no matter what. If plugin shouldn't run the query will revert to default.
+		add_filter( 'mai_post_grid_query_args', [ $this, 'edit_query' ], 10, 2 );
 
 		// Ready to go.
 		if ( $this->has_jetpack() && $this->has_stats() ) {
 			$key = 'mai_grid_block_posts_orderby';
 			add_action( 'wp_footer',                 [ $this, 'update_views' ] );
 			add_filter( "acf/load_field/key={$key}", [ $this, 'add_views_choice' ] );
-			add_filter( 'mai_post_grid_query_args',  [ $this, 'edit_query' ], 10, 2 );
 
 			// Add Stats to REST API Post response.
 			if ( function_exists( 'register_rest_field' ) ) {
