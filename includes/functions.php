@@ -8,49 +8,88 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  *
  * @since 0.1.0
  *
- * @param int  $number    The number to return.
- * @param int  $offset    The number to skip.
+ * @param array $args The args.
+ * [
+ *   'days'     => 7,      // The number of days to check for trending. Max 30.
+ *   'number'   => 12,     // The number to return.
+ *   'offset'   => 0,      // The number to skip.
+ *   'post_type => 'post', // The post types to get. Either a string 'post' or array [ 'post', 'page' ].
+ * ]
  * @param bool $use_cache Whether to use transients.
  *
  * @return array
  */
-function maitp_get_trending( $number = 12, $offset = 0, $use_cache = true ) {
-	$trending = maitp_get_all_trending( $use_cache );
+function maitp_get_trending( $args = [], $use_cache = true ) {
+	$args     = wp_parse_args( $args,
+		[
+			'days'      => 7,
+			'number'    => 12,
+			'offset'    => 0,
+			'post_type' => 'post',
+		]
+	);
+	$args['days']   = absint( $args['days'] );
+	$args['number'] = absint( $args['number'] );
+	$args['offset'] = absint( $args['offset'] );
+	$trending       = maitp_get_all_trending( $args['days'], $args['post_type'], $use_cache );
 
 	if ( ! $trending ) {
 		return [];
 	}
 
-	$trending = array_slice( $trending, $offset, $number );
+	$trending = $trending ? array_slice( $trending, max( 0, $args['offset'] - 1 ), $args['number'] + 1 ) : $trending;
 
 	return $trending;
 }
 
 /**
- * Gets trending post IDs. 24 posts max, for performance.
+ * Gets 100 trending post IDs.
+ * Cached for 5 minutes via `stats_get_from_restapi()`.
  *
  * @since 0.1.0
  *
- * @param bool $use_cache Whether to use transients.
+ * @param int          $days      The number of days to check for trending. Max 30.
+ * @param string|array $post_type The post types to get. Either a string 'post' or array [ 'post', 'page' ].
+ * @param bool         $use_cache Whether to use transients.
  *
  * @return array
  */
-function maitp_get_all_trending( $use_cache = true ) {
+function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = true ) {
 	$post_ids  = [];
-	$days      = 100;
-	$transient = 'mai_trending_posts';
+	$days      = max( (int) $days, 30 );
+	$post_type = array_map( 'strtolower', (array) $post_type );
+	sort( $post_type );
+	$transient = sprintf( 'mai_trending_%s_%s', implode( '_', $post_type ), $days );
 
 	if ( ! function_exists( 'stats_get_from_restapi' ) ) {
 		return $post_ids;
 	}
 
 	if ( ! $use_cache || false === ( $posts_ids = get_transient( $transient ) ) ) {
-		$stats = stats_get_from_restapi( [], 'top-posts?max=11&summarize=1&num=' . $days );
+		$stats = stats_get_from_restapi( [], add_query_arg(
+			[
+				'max'       => 11,
+				'summarize' => 1,
+				'num'       => $days,
+			],
+			'top-posts'
+		));
 
-		if ( isset( $stats->summary ) && $stats->summary->postviews ) {
-			$post_ids = array_filter( wp_list_pluck( $stats->summary->postviews, 'id' ) );
+		if ( $stats && ! is_wp_error( $stats ) ) {
+			if ( isset( $stats->summary ) && $stats->summary->postviews ) {
+				foreach ( $stats->summary->postviews as $values ) {
+					// Skip if wrong post type.
+					if ( ! in_array( $values->type, $post_type ) )  {
+						continue;
+					}
 
-			set_transient( $transient, $post_ids, 8 * HOUR_IN_SECONDS );
+					$post_ids[] = $values->id;
+				}
+
+				$post_ids = array_values( array_filter( $post_ids ) );
+
+				set_transient( $transient, $post_ids, 10 * MINUTE_IN_SECONDS );
+			}
 		}
 	}
 
