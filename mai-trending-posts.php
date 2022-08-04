@@ -260,15 +260,17 @@ final class Mai_Trending_Posts_Plugin {
 		}
 
 		// Get the data.
-		$stats = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
+		$post_id = get_the_ID();
+		$stats   = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
 
 		// If we have views.
 		if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
-			$views   = absint( $stats->views );
-			$exising = maitp_get_view_count();
+			$views    = absint( $stats->views );
+			$existing = maitp_get_view_count();
 
 			// Only update if new value.
-			if ( $views !== $exising ) {
+			if ( $views && $views !== $existing ) {
+
 				update_post_meta( $post_id, maitp_get_key(), $views );
 			}
 		}

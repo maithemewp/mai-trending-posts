@@ -17,7 +17,7 @@ function maitp_get_views( $atts ) {
 	$atts = shortcode_atts(
 		[
 			'min'           => 20,      // Minimum number of views before displaying.
-			'format'        => 'short', // Use short format (2k+) or show full number (2,143).
+			'format'        => 'short', // Use short format (2k+) or show full number (2,143). Currently accepts 'short', '', or a falsey value.
 			'icon'          => 'heart',
 			'style'         => 'solid',
 			'display'       => 'inline',
@@ -63,7 +63,7 @@ function maitp_get_views( $atts ) {
 		]
 	) : '';
 
-	return sprintf( '<span class="entry-views">%s<span class="view-count">%s</span></span>', $icon, $views );
+	return sprintf( '<span class="entry-views" style="display:inline-flex;align-items:center;>%s<span class="view-count">%s</span></span>', $icon, $views );
 }
 
 /**
@@ -89,6 +89,8 @@ function maitp_get_view_count( $post_id = '' ) {
 
 /**
  * Gets a shortened number value for number.
+ *
+ * @since 0.1.0
  *
  * @param int $number The number.
  *
