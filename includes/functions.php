@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * @return array
  */
 function maitp_get_trending( $args = [], $use_cache = true ) {
-	$args     = wp_parse_args( $args,
+	$args = wp_parse_args( $args,
 		[
 			'days'      => 7,
 			'number'    => 12,
@@ -56,7 +56,7 @@ function maitp_get_trending( $args = [], $use_cache = true ) {
  */
 function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = true ) {
 	$post_ids  = [];
-	$days      = max( (int) $days, 30 );
+	$days      = min( (int) $days, 30 );
 	$post_type = array_map( 'strtolower', (array) $post_type );
 	sort( $post_type );
 	$transient = sprintf( 'mai_trending_%s_%s', implode( '_', $post_type ), $days );
