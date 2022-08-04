@@ -278,6 +278,8 @@ final class Mai_Trending_Posts_Plugin {
 		return $views;
 	}
 
+
+
 	/**
 	 * Adds Views as an "Ordery By" choice.
 	 *

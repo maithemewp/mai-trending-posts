@@ -4,6 +4,28 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
+ * Gets trending post IDs.
+ * We do not recommend accessing more than 10 days of results at one.
+ * When more than 10 days of results are accessed at once, results should be cached via the WordPress transients API.
+ * Querying for -1 days will give results for an infinite number of days.
+ *
+ * @param int $days The number to return.
+ *
+ * @return array
+ */
+function maitp_get_trending( $days = 100 ) {
+	$stats = stats_get_from_restapi( [], 'top-posts?max=11&summarize=1&num=' . (int) $days );
+
+	if ( ! isset( $stats->summary ) || empty( $stats->summary->postviews ) ) {
+		return [];
+	}
+
+	$post_ids = array_filter( wp_list_pluck( $stats->summary->postviews, 'id' ) );
+
+	return $post_ids ?: [];
+}
+
+/**
  * Gets views for display.
  *
  * @since 0.1.0
