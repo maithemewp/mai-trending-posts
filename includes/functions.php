@@ -21,7 +21,7 @@ function maitp_get_trending( $number = 12, $offset = 0, $use_cache = true ) {
 		return [];
 	}
 
-	$trending = array_slice( $input, $offset, $number );
+	$trending = array_slice( $trending, $offset, $number );
 
 	return $trending;
 }
