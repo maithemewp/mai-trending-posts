@@ -64,7 +64,7 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	public function __clone() {
 		// Cloning instances of the class is forbidden.
-		_doing_it_wrong( __FUNCTION__, __( 'Cheatin&#8217; huh?', 'textdomain' ), '1.0' );
+		_doing_it_wrong( __FUNCTION__, __( 'Cheatin&#8217; huh?', 'mai-trending-posts' ), '1.0' );
 	}
 
 	/**
@@ -76,7 +76,7 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	public function __wakeup() {
 		// Unserializing instances of the class is forbidden.
-		_doing_it_wrong( __FUNCTION__, __( 'Cheatin&#8217; huh?', 'textdomain' ), '1.0' );
+		_doing_it_wrong( __FUNCTION__, __( 'Cheatin&#8217; huh?', 'mai-trending-posts' ), '1.0' );
 	}
 
 	/**
@@ -167,7 +167,7 @@ final class Mai_Trending_Posts_Plugin {
 		}
 
 		// // Setup the updater.
-		// $updater = Puc_v4_Factory::buildUpdateChecker( 'https://github.com/bizbudding/starter-plugin/', __FILE__, 'textdomain' );
+		// $updater = Puc_v4_Factory::buildUpdateChecker( 'https://github.com/bizbudding/starter-plugin/', __FILE__, 'mai-trending-posts' );
 
 		// // Maybe set github api token.
 		// if ( defined( 'MAI_GITHUB_API_TOKEN' ) ) {
