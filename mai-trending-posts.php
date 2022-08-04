@@ -193,16 +193,18 @@ final class Mai_Trending_Posts_Plugin {
 	 * @return
 	 */
 	function run() {
-		// Register shortcode no matter what.
-		add_shortcode( 'mai_views', [ $this, 'add_shortcode' ] );
-		// Modify query no matter what. If plugin shouldn't run the query will revert to default.
-		add_filter( 'mai_post_grid_query_args', [ $this, 'edit_query' ], 10, 2 );
+		add_shortcode( 'mai_views',                                        [ $this, 'add_shortcode' ] );
+		add_filter( 'mai_post_grid_query_args',                            [ $this, 'edit_query' ], 10, 2 );
+		add_filter( 'acf/load_field/key=mai_grid_block_query_by',          [ $this, 'add_trending_choice' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',     [ $this, 'add_views_choice' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_date_after',  [ $this, 'add_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_date_before', [ $this, 'add_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',     [ $this, 'add_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',       [ $this, 'add_conditional_logic' ] );
 
 		// Ready to go.
 		if ( $this->has_jetpack() && $this->has_stats() ) {
-			$key = 'mai_grid_block_posts_orderby';
-			add_action( 'wp_footer',                 [ $this, 'update_views' ] );
-			add_filter( "acf/load_field/key={$key}", [ $this, 'add_views_choice' ] );
+			add_action( 'wp_footer', [ $this, 'update_views' ] );
 
 			// Add Stats to REST API Post response.
 			if ( function_exists( 'register_rest_field' ) ) {
@@ -237,48 +239,62 @@ final class Mai_Trending_Posts_Plugin {
 	}
 
 	/**
-	 * Updates view counts as post meta.
-	 * Retrieve views using the WordPress.com Stats API.
-	 * The `stats_get_from_restapi()` function is cached for 5 minutes, so no caching needed here.
-	 *
-	 * @link https://github.com/Automattic/jetpack/blob/trunk/projects/plugins/jetpack/modules/stats.php#L1636
+	 * Adds shortcode to display views.
+	 * Bail if shouldn't run. This makes sure views do not display if Jetpack/Stats are not running.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return void
+	 * @return string
 	 */
-	function update_views() {
-		if ( ! is_singular() ) {
+	function add_shortcode( $atts ) {
+		if ( ! $this->should_run() ) {
 			return;
 		}
 
-		$views = 0;
-
-		// Return early if we use a too old version of Jetpack.
-		if ( ! function_exists( 'stats_get_from_restapi' ) ) {
-			return $views;
-		}
-
-		// Get the data.
-		$post_id = get_the_ID();
-		$stats   = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
-
-		// If we have views.
-		if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
-			$views    = absint( $stats->views );
-			$existing = maitp_get_view_count();
-
-			// Only update if new value.
-			if ( $views && $views !== $existing ) {
-
-				update_post_meta( $post_id, maitp_get_key(), $views );
-			}
-		}
-
-		return $views;
+		return maitp_get_views( $atts );
 	}
 
+	/**
+	 * Modify Mai Post Grid query args.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array
+	 */
+	function edit_query( $query_args, $args ) {
+		if ( isset( $args['query_by'] ) && $args['query_by'] && 'trending' === $args['query_by'] ) {
+			$query_args['post__in'] = maitp_get_trending(
+				[
+					'days'      => 7,
+					'number'    => $query_args['posts_per_page'],
+					'offset'    => isset( $query_args['offset'] ) ? $query_args['offset'] : 0,
+				],
+				$args['post_type']
+			);
+		}
 
+		if ( isset( $args['orderby'] ) && $args['orderby'] && 'views' === $args['orderby'] ) {
+			$query_args['meta_key'] = maitp_get_key();
+			$query_args['orderby']  = 'meta_value_num';
+		}
+
+		return $query_args;
+	}
+
+	/**
+	 * Adds Trending as an "Get Entries By" choice.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array $field The existing field array.
+	 *
+	 * @return array
+	 */
+	function add_trending_choice( $field ) {
+		$field['choices'][ 'trending' ] = __( 'Trending', 'mai-trending-posts' );
+
+		return $field;
+	}
 
 	/**
 	 * Adds Views as an "Ordery By" choice.
@@ -312,44 +328,6 @@ final class Mai_Trending_Posts_Plugin {
 		];
 
 		return $field;
-	}
-
-	/**
-	 * Modify Mai Post Grid query args.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array
-	 */
-	function edit_query( $query_args, $args ) {
-		if ( ! isset( $args['orderby'] ) || empty( $args['orderby'] ) || 'views' !== $args['orderby'] ) {
-			return $query_args;
-		}
-
-		if ( ! $this->should_run() ) {
-			return $query_args;
-		}
-
-		$query_args['orderby']  = 'meta_value_num';
-		$query_args['meta_key'] = maitp_get_key();
-
-		return $query_args;
-	}
-
-	/**
-	 * Adds shortcode to display views.
-	 * Bail if shouldn't run. This makes sure views do not display if Jetpack/Stats are not running.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string
-	 */
-	function add_shortcode( $atts ) {
-		if ( ! $this->should_run() ) {
-			return;
-		}
-
-		return maitp_get_views( $atts );
 	}
 
 	/**
@@ -399,6 +377,48 @@ final class Mai_Trending_Posts_Plugin {
 		$has  = $this->has_jetpack() && Jetpack::is_module_active( 'stats' );
 
 		return $has;
+	}
+
+	/**
+	 * Updates view counts as post meta.
+	 * Retrieve views using the WordPress.com Stats API.
+	 * The `stats_get_from_restapi()` function is cached for 5 minutes, so no caching needed here.
+	 *
+	 * @link https://github.com/Automattic/jetpack/blob/trunk/projects/plugins/jetpack/modules/stats.php#L1636
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	function update_views() {
+		if ( ! is_singular() ) {
+			return;
+		}
+
+		$views = 0;
+
+		// Return early if we use a too old version of Jetpack.
+		if ( ! function_exists( 'stats_get_from_restapi' ) ) {
+			return $views;
+		}
+
+		// Get the data.
+		$post_id = get_the_ID();
+		$stats   = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
+
+		// If we have views.
+		if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
+			$views    = absint( $stats->views );
+			$existing = maitp_get_view_count();
+
+			// Only update if new value.
+			if ( $views && $views !== $existing ) {
+
+				update_post_meta( $post_id, maitp_get_key(), $views );
+			}
+		}
+
+		return $views;
 	}
 
 	/**
