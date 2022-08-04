@@ -263,13 +263,15 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	function edit_query( $query_args, $args ) {
 		if ( isset( $args['query_by'] ) && $args['query_by'] && 'trending' === $args['query_by'] ) {
+			$query_args['meta_key'] = maitp_get_key();
+			$query_args['orderby']  = 'meta_value_num';
 			$query_args['post__in'] = maitp_get_trending(
 				[
-					'days'      => 7,
+					'days'      => 3, // TODO: Somehow allow users to set this?
 					'number'    => $query_args['posts_per_page'],
 					'offset'    => isset( $query_args['offset'] ) ? $query_args['offset'] : 0,
+					'post_type' => $query_args['post_type'],
 				],
-				$args['post_type']
 			);
 		}
 
