@@ -4,6 +4,99 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
+ * Gets a limited number of trending posts.
+ *
+ * @since 0.1.0
+ *
+ * @param array $args The args.
+ * [
+ *   'days'     => 7,      // The number of days to check for trending. Max 30.
+ *   'number'   => 12,     // The number to return.
+ *   'offset'   => 0,      // The number to skip.
+ *   'post_type => 'post', // The post types to get. Either a string 'post' or array [ 'post', 'page' ].
+ * ]
+ * @param bool $use_cache Whether to use transients.
+ *
+ * @return array
+ */
+function maitp_get_trending( $args = [], $use_cache = true ) {
+	$args = wp_parse_args( $args,
+		[
+			'days'      => 7,
+			'number'    => 12,
+			'offset'    => 0,
+			'post_type' => 'post',
+		]
+	);
+	$args['days']   = absint( $args['days'] );
+	$args['number'] = absint( $args['number'] );
+	$args['offset'] = absint( $args['offset'] );
+	$trending       = maitp_get_all_trending( $args['days'], $args['post_type'], $use_cache );
+
+	if ( ! $trending ) {
+		return [];
+	}
+
+	$trending = $trending ? array_slice( $trending, max( 0, $args['offset'] - 1 ), $args['number'] + 1 ) : $trending;
+
+	return $trending;
+}
+
+/**
+ * Gets 100 trending post IDs.
+ * Cached for 5 minutes via `stats_get_from_restapi()`.
+ *
+ * @since 0.1.0
+ *
+ * @param int          $days      The number of days to check for trending. Max 30.
+ * @param string|array $post_type The post types to get. Either a string 'post' or array [ 'post', 'page' ].
+ * @param bool         $use_cache Whether to use transients.
+ *
+ * @return array
+ */
+function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = true ) {
+	$post_ids  = [];
+	$days      = min( (int) $days, 30 );
+	$post_type = array_map( 'strtolower', (array) $post_type );
+	sort( $post_type );
+	$transient = sprintf( 'mai_trending_%s_%s', implode( '_', $post_type ), $days );
+
+	if ( ! function_exists( 'stats_get_from_restapi' ) ) {
+		return $post_ids;
+	}
+
+	if ( ! $use_cache || false === ( $posts_ids = get_transient( $transient ) ) ) {
+		$stats = stats_get_from_restapi( [], add_query_arg(
+			[
+				'max'       => 11,
+				'summarize' => 1,
+				'num'       => $days,
+			],
+			'top-posts'
+		));
+
+		if ( $stats && ! is_wp_error( $stats ) ) {
+			if ( isset( $stats->summary ) && $stats->summary->postviews ) {
+				foreach ( $stats->summary->postviews as $values ) {
+					// Skip if wrong post type.
+					if ( ! in_array( $values->type, $post_type ) )  {
+						continue;
+					}
+
+					$post_ids[] = $values->id;
+				}
+
+				$post_ids = array_values( array_filter( $post_ids ) );
+
+				set_transient( $transient, $post_ids, 10 * MINUTE_IN_SECONDS );
+			}
+		}
+	}
+
+	return $post_ids;
+}
+
+/**
  * Gets views for display.
  *
  * @since 0.1.0
@@ -17,7 +110,7 @@ function maitp_get_views( $atts ) {
 	$atts = shortcode_atts(
 		[
 			'min'           => 20,      // Minimum number of views before displaying.
-			'format'        => 'short', // Use short format (2k+) or show full number (2,143).
+			'format'        => 'short', // Use short format (2k+) or show full number (2,143). Currently accepts 'short', '', or a falsey value.
 			'icon'          => 'heart',
 			'style'         => 'solid',
 			'display'       => 'inline',
@@ -63,7 +156,7 @@ function maitp_get_views( $atts ) {
 		]
 	) : '';
 
-	return sprintf( '<span class="entry-views">%s<span class="view-count">%s</span></span>', $icon, $views );
+	return sprintf( '<span class="entry-views" style="display:inline-flex;align-items:center;">%s<span class="view-count">%s</span></span>', $icon, $views );
 }
 
 /**
@@ -71,7 +164,7 @@ function maitp_get_views( $atts ) {
  *
  * @since 0.1.0
  *
- * @param int|string $post_id Post ID.
+ * @param int|string $post_id The post ID.
  *
  * @return int $views Post View.
  */
@@ -88,7 +181,51 @@ function maitp_get_view_count( $post_id = '' ) {
 }
 
 /**
+ * Updates view count for a post.
+ *
+ * @since 0.1.0
+ *
+ * @param int|string $post_id The post ID.
+ *
+ * @return int
+ */
+function maitp_update_view_count( $post_id = '' ) {
+	if ( ! $post_id ) {
+		$post_id = get_the_ID();
+	}
+
+	if ( ! $post_id ) {
+		return;
+	}
+
+	$views = 0;
+
+	// Return early if we use a too old version of Jetpack.
+	if ( ! function_exists( 'stats_get_from_restapi' ) ) {
+		return $views;
+	}
+
+	// Get the data.
+	$stats = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
+
+	// If we have views.
+	if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
+		$views    = absint( $stats->views );
+		$existing = maitp_get_view_count();
+
+		// Only update if new value.
+		if ( $views && $views > $existing ) {
+			update_post_meta( $post_id, maitp_get_key(), $views );
+		}
+	}
+
+	return $views;
+}
+
+/**
  * Gets a shortened number value for number.
+ *
+ * @since 0.1.0
  *
  * @param int $number The number.
  *

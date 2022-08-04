@@ -2,8 +2,8 @@
 
 /**
  * Plugin Name:     Mai Trending Posts
- * Plugin URI:      https://bizbudding.com
- * Description:     Show views total and display trending posts in Mai Post Grid. Uses Jetpack Stats.
+ * Plugin URI:      https://bizbudding.com/mai-theme/
+ * Description:     Show total views and display popular or trending posts in Mai Post Grid. Uses Jetpack Stats.
  * Version:         0.1.0
  *
  * Author:          BizBudding
@@ -166,23 +166,23 @@ final class Mai_Trending_Posts_Plugin {
 			return;
 		}
 
-		// // Setup the updater.
-		// $updater = Puc_v4_Factory::buildUpdateChecker( 'https://github.com/bizbudding/starter-plugin/', __FILE__, 'mai-trending-posts' );
+		// Setup the updater.
+		$updater = Puc_v4_Factory::buildUpdateChecker( 'https://github.com/maithemewp/mai-trending-posts/', __FILE__, 'mai-trending-posts' );
 
-		// // Maybe set github api token.
-		// if ( defined( 'MAI_GITHUB_API_TOKEN' ) ) {
-		// 	$updater->setAuthentication( MAI_GITHUB_API_TOKEN );
-		// }
+		// Maybe set github api token.
+		if ( defined( 'MAI_GITHUB_API_TOKEN' ) ) {
+			$updater->setAuthentication( MAI_GITHUB_API_TOKEN );
+		}
 
-		// // Add icons for Dashboard > Updates screen.
-		// if ( function_exists( 'mai_get_updater_icons' ) && $icons = mai_get_updater_icons() ) {
-		// 	$updater->addResultFilter(
-		// 		function ( $info ) use ( $icons ) {
-		// 			$info->icons = $icons;
-		// 			return $info;
-		// 		}
-		// 	);
-		// }
+		// Add icons for Dashboard > Updates screen.
+		if ( function_exists( 'mai_get_updater_icons' ) && $icons = mai_get_updater_icons() ) {
+			$updater->addResultFilter(
+				function ( $info ) use ( $icons ) {
+					$info->icons = $icons;
+					return $info;
+				}
+			);
+		}
 	}
 
 	/**
@@ -193,15 +193,18 @@ final class Mai_Trending_Posts_Plugin {
 	 * @return
 	 */
 	function run() {
-		// Register shortcode no matter what.
-		add_shortcode( 'mai_views', [ $this, 'add_shortcode' ] );
+		add_shortcode( 'mai_views',                                        [ $this, 'add_shortcode' ] );
+		add_filter( 'mai_post_grid_query_args',                            [ $this, 'edit_query' ], 10, 2 );
+		add_filter( 'acf/load_field/key=mai_grid_block_query_by',          [ $this, 'add_trending_choice' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',     [ $this, 'add_views_choice' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_date_after',  [ $this, 'add_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_date_before', [ $this, 'add_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',     [ $this, 'add_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',       [ $this, 'add_conditional_logic' ] );
 
 		// Ready to go.
 		if ( $this->has_jetpack() && $this->has_stats() ) {
-			$key = 'mai_grid_block_posts_orderby';
-			add_action( 'wp_footer',                 [ $this, 'update_views' ] );
-			add_filter( "acf/load_field/key={$key}", [ $this, 'add_views_choice' ] );
-			add_filter( 'mai_post_grid_query_args',  [ $this, 'edit_query' ], 10, 2 );
+			add_action( 'wp_footer', [ $this, 'update_views' ] );
 
 			// Add Stats to REST API Post response.
 			if ( function_exists( 'register_rest_field' ) ) {
@@ -236,43 +239,63 @@ final class Mai_Trending_Posts_Plugin {
 	}
 
 	/**
-	 * Updates view counts as post meta.
-	 * Retrieve views using the WordPress.com Stats API.
-	 * The `stats_get_from_restapi()` function is cached for 5 minutes, so no caching needed here.
-	 *
-	 * @link https://github.com/Automattic/jetpack/blob/trunk/projects/plugins/jetpack/modules/stats.php#L1636
+	 * Adds shortcode to display views.
+	 * Bail if shouldn't run. This makes sure views do not display if Jetpack/Stats are not running.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return void
+	 * @return string
 	 */
-	function update_views() {
-		if ( ! is_singular() ) {
+	function add_shortcode( $atts ) {
+		if ( ! $this->should_run() ) {
 			return;
 		}
 
-		$views = 0;
+		return maitp_get_views( $atts );
+	}
 
-		// Return early if we use a too old version of Jetpack.
-		if ( ! function_exists( 'stats_get_from_restapi' ) ) {
-			return $views;
+	/**
+	 * Modify Mai Post Grid query args.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array
+	 */
+	function edit_query( $query_args, $args ) {
+		if ( isset( $args['query_by'] ) && $args['query_by'] && 'trending' === $args['query_by'] ) {
+			$query_args['meta_key'] = maitp_get_key();
+			$query_args['orderby']  = 'meta_value_num';
+			$query_args['post__in'] = maitp_get_trending(
+				[
+					'days'      => 3, // TODO: Somehow allow users to set this?
+					'number'    => $query_args['posts_per_page'],
+					'offset'    => isset( $query_args['offset'] ) ? $query_args['offset'] : 0,
+					'post_type' => $query_args['post_type'],
+				],
+			);
 		}
 
-		// Get the data.
-		$stats = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
-
-		// If we have views.
-		if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
-			$views   = absint( $stats->views );
-			$exising = maitp_get_view_count();
-
-			// Only update if new value.
-			if ( $views !== $exising ) {
-				update_post_meta( $post_id, maitp_get_key(), $views );
-			}
+		if ( isset( $args['orderby'] ) && $args['orderby'] && 'views' === $args['orderby'] ) {
+			$query_args['meta_key'] = maitp_get_key();
+			$query_args['orderby']  = 'meta_value_num';
 		}
 
-		return $views;
+		return $query_args;
+	}
+
+	/**
+	 * Adds Trending as an "Get Entries By" choice.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array $field The existing field array.
+	 *
+	 * @return array
+	 */
+	function add_trending_choice( $field ) {
+		$field['choices'][ 'trending' ] = __( 'Trending', 'mai-trending-posts' );
+
+		return $field;
 	}
 
 	/**
@@ -307,44 +330,6 @@ final class Mai_Trending_Posts_Plugin {
 		];
 
 		return $field;
-	}
-
-	/**
-	 * Modify Mai Post Grid query args.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array
-	 */
-	function edit_query( $query_args, $args ) {
-		if ( ! isset( $args['orderby'] ) || empty( $args['orderby'] ) || 'views' !== $args['orderby'] ) {
-			return $query_args;
-		}
-
-		if ( ! $this->should_run() ) {
-			return $query_args;
-		}
-
-		$query_args['orderby']  = 'meta_value_num';
-		$query_args['meta_key'] = maitp_get_key();
-
-		return $query_args;
-	}
-
-	/**
-	 * Adds shortcode to display views.
-	 * Bail if shouldn't run. This makes sure views do not display if Jetpack/Stats are not running.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string
-	 */
-	function add_shortcode( $atts ) {
-		if ( ! $this->should_run() ) {
-			return;
-		}
-
-		return maitp_get_views( $atts );
 	}
 
 	/**
@@ -397,6 +382,26 @@ final class Mai_Trending_Posts_Plugin {
 	}
 
 	/**
+	 * Updates view counts as post meta.
+	 * Retrieve views using the WordPress.com Stats API.
+	 * The `stats_get_from_restapi()` function is cached for 5 minutes, so no caching needed here.
+	 *
+	 * @link https://github.com/Automattic/jetpack/blob/trunk/projects/plugins/jetpack/modules/stats.php#L1636
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	function update_views() {
+		if ( ! is_singular() ) {
+			return;
+		}
+
+		$views = maitp_update_view_count( get_the_ID() );
+		return;
+	}
+
+	/**
 	 * Add views to REST API Post responses.
 	 *
 	 * @since 1.0.0
@@ -407,9 +412,8 @@ final class Mai_Trending_Posts_Plugin {
 		register_rest_field( 'post',
 			maitp_get_key(),
 			[
-				'get_callback'    => [ $this, 'rest_get_views' ],
-				'update_callback' => [ $this, 'rest_update_views' ],
-				'schema'          => null,
+				'get_callback' => [ $this, 'rest_get_views' ],
+				'schema'       => null,
 			]
 		);
 	}
@@ -427,27 +431,6 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	public function rest_get_views( $object, $field_name, $request ) {
 		return absint( get_post_meta( $object['id'], maitp_get_key(), true ) );
-	}
-
-	/**
-	 * Update post views from the API.
-	 *
-	 * Only accepts a string.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $views      New post view value.
-	 * @param object $object     The object from the response.
-	 * @param string $field_name Name of field.
-	 *
-	 * @return bool|int
-	 */
-	public function rest_update_views( $views, $object, $field_name ) {
-		if ( ! isset( $views ) || empty( $views ) ) {
-			return new WP_Error( 'bad-post-view', __( 'The specified view is in an invalid format.', 'mai-trending-posts' ) );
-		}
-
-		return update_post_meta( $object->ID, maitp_get_key(), absint( $views ) );
 	}
 }
 
