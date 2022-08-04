@@ -2,8 +2,8 @@
 
 /**
  * Plugin Name:     Mai Trending Posts
- * Plugin URI:      https://bizbudding.com
- * Description:     Show views total and display trending posts in Mai Post Grid. Uses Jetpack Stats.
+ * Plugin URI:      https://bizbudding.com/mai-theme/
+ * Description:     Show total views and display popular or trending posts in Mai Post Grid. Uses Jetpack Stats.
  * Version:         0.1.0
  *
  * Author:          BizBudding
@@ -397,30 +397,8 @@ final class Mai_Trending_Posts_Plugin {
 			return;
 		}
 
-		$views = 0;
-
-		// Return early if we use a too old version of Jetpack.
-		if ( ! function_exists( 'stats_get_from_restapi' ) ) {
-			return $views;
-		}
-
-		// Get the data.
-		$post_id = get_the_ID();
-		$stats   = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
-
-		// If we have views.
-		if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
-			$views    = absint( $stats->views );
-			$existing = maitp_get_view_count();
-
-			// Only update if new value.
-			if ( $views && $views !== $existing ) {
-
-				update_post_meta( $post_id, maitp_get_key(), $views );
-			}
-		}
-
-		return $views;
+		$views = maitp_update_view_count( get_the_ID() );
+		return;
 	}
 
 	/**
@@ -434,9 +412,8 @@ final class Mai_Trending_Posts_Plugin {
 		register_rest_field( 'post',
 			maitp_get_key(),
 			[
-				'get_callback'    => [ $this, 'rest_get_views' ],
-				'update_callback' => [ $this, 'rest_update_views' ],
-				'schema'          => null,
+				'get_callback' => [ $this, 'rest_get_views' ],
+				'schema'       => null,
 			]
 		);
 	}
@@ -454,27 +431,6 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	public function rest_get_views( $object, $field_name, $request ) {
 		return absint( get_post_meta( $object['id'], maitp_get_key(), true ) );
-	}
-
-	/**
-	 * Update post views from the API.
-	 *
-	 * Only accepts a string.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $views      New post view value.
-	 * @param object $object     The object from the response.
-	 * @param string $field_name Name of field.
-	 *
-	 * @return bool|int
-	 */
-	public function rest_update_views( $views, $object, $field_name ) {
-		if ( ! isset( $views ) || empty( $views ) ) {
-			return new WP_Error( 'bad-post-view', __( 'The specified view is in an invalid format.', 'mai-trending-posts' ) );
-		}
-
-		return update_post_meta( $object->ID, maitp_get_key(), absint( $views ) );
 	}
 }
 
