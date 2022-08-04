@@ -63,7 +63,7 @@ function maitp_get_views( $atts ) {
 		]
 	) : '';
 
-	return sprintf( '<span class="entry-views" style="display:inline-flex;align-items:center;>%s<span class="view-count">%s</span></span>', $icon, $views );
+	return sprintf( '<span class="entry-views" style="display:inline-flex;align-items:center;">%s<span class="view-count">%s</span></span>', $icon, $views );
 }
 
 /**
