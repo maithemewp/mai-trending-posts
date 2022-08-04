@@ -4,25 +4,57 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Gets trending post IDs.
- * We do not recommend accessing more than 10 days of results at one.
- * When more than 10 days of results are accessed at once, results should be cached via the WordPress transients API.
- * Querying for -1 days will give results for an infinite number of days.
+ * Gets a limited number of trending posts.
  *
- * @param int $days The number to return.
+ * @since 0.1.0
+ *
+ * @param int  $number    The number to return.
+ * @param int  $offset    The number to skip.
+ * @param bool $use_cache Whether to use transients.
  *
  * @return array
  */
-function maitp_get_trending( $days = 100 ) {
-	$stats = stats_get_from_restapi( [], 'top-posts?max=11&summarize=1&num=' . (int) $days );
+function maitp_get_trending( $number = 12, $offset = 0, $use_cache = true ) {
+	$trending = maitp_get_all_trending( $use_cache );
 
-	if ( ! isset( $stats->summary ) || empty( $stats->summary->postviews ) ) {
+	if ( ! $trending ) {
 		return [];
 	}
 
-	$post_ids = array_filter( wp_list_pluck( $stats->summary->postviews, 'id' ) );
+	$trending = array_slice( $input, $offset, $number );
 
-	return $post_ids ?: [];
+	return $trending;
+}
+
+/**
+ * Gets trending post IDs. 24 posts max, for performance.
+ *
+ * @since 0.1.0
+ *
+ * @param bool $use_cache Whether to use transients.
+ *
+ * @return array
+ */
+function maitp_get_all_trending( $use_cache = true ) {
+	$post_ids  = [];
+	$days      = 100;
+	$transient = 'mai_trending_posts';
+
+	if ( ! function_exists( 'stats_get_from_restapi' ) ) {
+		return $post_ids;
+	}
+
+	if ( ! $use_cache || false === ( $posts_ids = get_transient( $transient ) ) ) {
+		$stats = stats_get_from_restapi( [], 'top-posts?max=11&summarize=1&num=' . $days );
+
+		if ( isset( $stats->summary ) && $stats->summary->postviews ) {
+			$post_ids = array_filter( wp_list_pluck( $stats->summary->postviews, 'id' ) );
+
+			set_transient( $transient, $post_ids, 8 * HOUR_IN_SECONDS );
+		}
+	}
+
+	return $post_ids;
 }
 
 /**
