@@ -164,7 +164,7 @@ function maitp_get_views( $atts ) {
  *
  * @since 0.1.0
  *
- * @param int|string $post_id Post ID.
+ * @param int|string $post_id The post ID.
  *
  * @return int $views Post View.
  */
@@ -178,6 +178,48 @@ function maitp_get_view_count( $post_id = '' ) {
 	}
 
 	return absint( get_post_meta( $post_id, maitp_get_key(), true ) );
+}
+
+/**
+ * Updates view count for a post.
+ *
+ * @since 0.1.0
+ *
+ * @param int|string $post_id The post ID.
+ *
+ * @return int
+ */
+function maitp_update_view_count( $post_id = '' ) {
+	if ( ! $post_id ) {
+		$post_id = get_the_ID();
+	}
+
+	if ( ! $post_id ) {
+		return;
+	}
+
+	$views = 0;
+
+	// Return early if we use a too old version of Jetpack.
+	if ( ! function_exists( 'stats_get_from_restapi' ) ) {
+		return $views;
+	}
+
+	// Get the data.
+	$stats = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
+
+	// If we have views.
+	if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
+		$views    = absint( $stats->views );
+		$existing = maitp_get_view_count();
+
+		// Only update if new value.
+		if ( $views && $views > $existing ) {
+			update_post_meta( $post_id, maitp_get_key(), $views );
+		}
+	}
+
+	return $views;
 }
 
 /**
