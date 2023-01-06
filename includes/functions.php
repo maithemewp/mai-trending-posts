@@ -10,10 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  *
  * @param array $args The args.
  * [
- *   'days'     => 7,      // The number of days to check for trending. Max 30.
- *   'number'   => 12,     // The number to return.
- *   'offset'   => 0,      // The number to skip.
- *   'post_type => 'post', // The post types to get. Either a string 'post' or array [ 'post', 'page' ].
+ *   'days'      => 7,      // The number of days to check for trending. Max 30.
+ *   'number'    => 12,     // The number to return.
+ *   'offset'    => 0,      // The number to skip.
+ *   'post_type' => 'post', // The post types to get. Either a string 'post' or array [ 'post', 'page' ].
  * ]
  * @param bool $use_cache Whether to use transients.
  *
@@ -47,6 +47,7 @@ function maitp_get_trending( $args = [], $use_cache = true ) {
  * Cached for 5 minutes via `stats_get_from_restapi()`.
  *
  * @since 0.1.0
+ * @since TBD Converted to WPCOM_Stats package.
  *
  * @param int          $days      The number of days to check for trending. Max 30.
  * @param string|array $post_type The post types to get. Either a string 'post' or array [ 'post', 'page' ].
@@ -61,19 +62,30 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
 	sort( $post_type );
 	$transient = sprintf( 'mai_trending_%s_%s', implode( '_', $post_type ), $days );
 
-	if ( ! function_exists( 'stats_get_from_restapi' ) ) {
+	$has_class    = class_exists( 'WPCOM_Stats' );
+	$has_function = function_exists( 'stats_get_from_restapi' );
+
+	if ( ! ( $has_class || $has_function ) ) {
 		return $post_ids;
 	}
 
 	if ( ! $use_cache || false === ( $posts_ids = get_transient( $transient ) ) ) {
-		$stats = stats_get_from_restapi( [], add_query_arg(
-			[
-				'max'       => 11,
-				'summarize' => 1,
-				'num'       => $days,
-			],
-			'top-posts'
-		));
+		$args = [
+			'max'       => 11,
+			'summarize' => 1,
+			'num'       => $days,
+		];
+
+		if ( $has_class ) {
+			$stats = maitp_convert_stats_array_to_object( ( new WPCOM_Stats() )->get_top_posts( $args ) );
+
+		} else {
+
+			$stats = stats_get_from_restapi( [], add_query_arg(
+				$args,
+				'top-posts'
+			));
+		}
 
 		if ( $stats && ! is_wp_error( $stats ) ) {
 			if ( isset( $stats->summary ) && $stats->summary->postviews ) {
@@ -97,6 +109,33 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
 }
 
 /**
+ * Convert stats array to object after sanity checking the array is valid.
+ * Taken from JP Post Views, which was taken from Jetpack.
+ *
+ * @access private
+ * @see    https://github.com/Automattic/jetpack/blob/8a79f5e319d5da58de1b8f0bda863957b938bf21/projects/plugins/jetpack/modules/stats.php#L1522-L1538
+ *
+ * @since TBD
+ *
+ * @param array $stats_array The stats array.
+ *
+ * @return WP_Error|Object|null
+ */
+function maitp_convert_stats_array_to_object( $stats_array ) {
+	if ( is_wp_error( $stats_array ) ) {
+		return $stats_array;
+	}
+
+	$encoded_array = wp_json_encode( $stats_array );
+
+	if ( ! $encoded_array ) {
+		return new WP_Error( 'stats_encoding_error', 'Failed to encode stats array' );
+	}
+
+	return json_decode( $encoded_array );
+}
+
+/**
  * Gets views for display.
  *
  * @since 0.1.0
@@ -105,7 +144,7 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
  *
  * @return string
  */
-function maitp_get_views( $atts ) {
+function maitp_get_views( $atts = [] ) {
 	// Atts.
 	$atts = shortcode_atts(
 		[
@@ -184,6 +223,7 @@ function maitp_get_view_count( $post_id = '' ) {
  * Updates view count for a post.
  *
  * @since 0.1.0
+ * @since TBD Converted to WPCOM_Stats package.
  *
  * @param int|string $post_id The post ID.
  *
@@ -205,8 +245,19 @@ function maitp_update_view_count( $post_id = '' ) {
 		return $views;
 	}
 
+	$has_class    = class_exists( 'WPCOM_Stats' );
+	$has_function = function_exists( 'stats_get_from_restapi' );
+
+	if ( ! ( $has_class || $has_function ) ) {
+		return;
+	}
+
 	// Get the data.
-	$stats = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', $post_id ) );
+	if ( $has_class ) {
+		$stats = maitp_convert_stats_array_to_object( ( new WPCOM_Stats() )->get_post_views( (int) $post_id ) );
+	} else {
+		$stats = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', (int) $post_id ) );
+	}
 
 	// If we have views.
 	if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {

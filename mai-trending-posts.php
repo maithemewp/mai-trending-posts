@@ -193,14 +193,16 @@ final class Mai_Trending_Posts_Plugin {
 	 * @return
 	 */
 	function run() {
-		add_shortcode( 'mai_views',                                        [ $this, 'add_shortcode' ] );
-		add_filter( 'mai_post_grid_query_args',                            [ $this, 'edit_query' ], 10, 2 );
-		add_filter( 'acf/load_field/key=mai_grid_block_query_by',          [ $this, 'add_trending_choice' ] );
-		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',     [ $this, 'add_views_choice' ] );
-		add_filter( 'acf/load_field/key=mai_grid_block_posts_date_after',  [ $this, 'add_conditional_logic' ] );
-		add_filter( 'acf/load_field/key=mai_grid_block_posts_date_before', [ $this, 'add_conditional_logic' ] );
-		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',     [ $this, 'add_conditional_logic' ] );
-		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',       [ $this, 'add_conditional_logic' ] );
+		add_shortcode( 'mai_views',                                               [ $this, 'add_shortcode' ] );
+		add_filter( 'mai_post_grid_query_args',                                   [ $this, 'edit_query' ], 10, 2 );
+		add_filter( 'acf/load_field/key=mai_grid_block_query_by',                 [ $this, 'add_trending_choice' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_views_choice' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies',          [ $this, 'add_show_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies_relation', [ $this, 'add_show_conditional_logic' ] );
+		// add_filter( 'acf/load_field/key=mai_grid_block_posts_date_after',         [ $this, 'add_hide_conditional_logic' ] );
+		// add_filter( 'acf/load_field/key=mai_grid_block_posts_date_before',        [ $this, 'add_hide_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_hide_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',              [ $this, 'add_hide_conditional_logic' ] );
 
 		// Ready to go.
 		if ( $this->has_jetpack() && $this->has_stats() ) {
@@ -314,6 +316,35 @@ final class Mai_Trending_Posts_Plugin {
 	}
 
 	/**
+	 * Adds conditional logic to show if query by is trending.
+	 * This duplicates existing conditions and changes query_by from 'tax_meta' to 'trending'.
+	 *
+	 * @since TBD
+	 *
+	 * @param array $field The existing field array.
+	 *
+	 * @return array
+	 */
+	function add_show_conditional_logic( $field ) {
+		$conditions = [];
+
+		foreach ( $field['conditional_logic'] as $index => $values ) {
+			$condition = $values;
+
+			if ( isset( $condition['field'] ) && 'mai_grid_block_query_by' == $condition['field'] ) {
+				$condition['value']    = 'trending';
+				$condition['operator'] = '==';
+			}
+
+			$conditions[] = $condition;
+		};
+
+		$field['conditional_logic'] = $conditions ? [ $field['conditional_logic'], $conditions ] : $field['conditional_logic'];
+
+		return $field;
+	}
+
+	/**
 	 * Adds conditional logic to hide if query by is trending.
 	 *
 	 * @since 0.1.0
@@ -322,7 +353,7 @@ final class Mai_Trending_Posts_Plugin {
 	 *
 	 * @return array
 	 */
-	function add_conditional_logic( $field ) {
+	function add_hide_conditional_logic( $field ) {
 		$field['conditional_logic'][] = [
 			'field'    => 'mai_grid_block_query_by',
 			'operator' => '!=',
