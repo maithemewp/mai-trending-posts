@@ -199,8 +199,8 @@ final class Mai_Trending_Posts_Plugin {
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_views_choice' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies',          [ $this, 'add_show_conditional_logic' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies_relation', [ $this, 'add_show_conditional_logic' ] );
-		add_filter( 'acf/load_field/key=mai_grid_block_post_meta_keys',           [ $this, 'add_show_conditional_logic' ] );
-		add_filter( 'acf/load_field/key=mai_grid_block_post_meta_keys_relation',  [ $this, 'add_show_conditional_logic' ] );
+		// add_filter( 'acf/load_field/key=mai_grid_block_post_meta_keys',           [ $this, 'add_show_conditional_logic' ] ); // Can't use meta because that's what is used for Views query.
+		// add_filter( 'acf/load_field/key=mai_grid_block_post_meta_keys_relation',  [ $this, 'add_show_conditional_logic' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_hide_conditional_logic' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',              [ $this, 'add_hide_conditional_logic' ] );
 
