@@ -4,7 +4,7 @@
  * Plugin Name:     Mai Trending Posts
  * Plugin URI:      https://bizbudding.com/mai-theme/
  * Description:     Show total views and display popular or trending posts in Mai Post Grid. Uses Jetpack Stats.
- * Version:         0.1.0
+ * Version:         0.2.0
  *
  * Author:          BizBudding
  * Author URI:      https://bizbudding.com
@@ -90,7 +90,7 @@ final class Mai_Trending_Posts_Plugin {
 
 		// Plugin version.
 		if ( ! defined( 'MAI_TRENDING_POSTS_PLUGIN_VERSION' ) ) {
-			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.1.0' );
+			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.2.0' );
 		}
 
 		// Plugin Folder Path.
@@ -199,6 +199,8 @@ final class Mai_Trending_Posts_Plugin {
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_views_choice' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies',          [ $this, 'add_show_conditional_logic' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies_relation', [ $this, 'add_show_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_post_meta_keys',           [ $this, 'add_show_conditional_logic' ] );
+		add_filter( 'acf/load_field/key=mai_grid_block_post_meta_keys_relation',  [ $this, 'add_show_conditional_logic' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_hide_conditional_logic' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',              [ $this, 'add_hide_conditional_logic' ] );
 
