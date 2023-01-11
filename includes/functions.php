@@ -28,10 +28,11 @@ function maitp_get_trending( $args = [], $use_cache = true ) {
 			'post_type' => 'post',
 		]
 	);
-	$args['days']   = absint( $args['days'] );
-	$args['number'] = absint( $args['number'] );
-	$args['offset'] = absint( $args['offset'] );
-	$trending       = maitp_get_all_trending( $args['days'], $args['post_type'], $use_cache );
+	$args['days']      = absint( $args['days'] );
+	$args['number']    = absint( $args['number'] );
+	$args['offset']    = absint( $args['offset'] );
+	$args['post_type'] = is_array( $args['post_type'] ) ? array_map( 'sanitize_key', $args['post_type'] ) : sanitize_key( $args['post_type'] );
+	$trending          = maitp_get_all_trending( $args['days'], $args['post_type'], $use_cache );
 
 	if ( ! $trending ) {
 		return [];
@@ -56,12 +57,11 @@ function maitp_get_trending( $args = [], $use_cache = true ) {
  * @return array
  */
 function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = true ) {
-	$post_ids  = [];
-	$days      = min( (int) $days, 30 );
-	$post_type = array_map( 'strtolower', (array) $post_type );
+	$post_ids     = [];
+	$days         = min( (int) $days, 30 );
+	$post_type    = array_map( 'strtolower', (array) $post_type );
 	sort( $post_type );
-	$transient = sprintf( 'mai_trending_%s_%s', implode( '_', $post_type ), $days );
-
+	$transient    = sprintf( 'mai_trending_%s_%s', implode( '_', $post_type ), $days );
 	$has_class    = class_exists( 'WPCOM_Stats' );
 	$has_function = function_exists( 'stats_get_from_restapi' );
 
@@ -69,7 +69,8 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
 		return $post_ids;
 	}
 
-	if ( ! $use_cache || false === ( $posts_ids = get_transient( $transient ) ) ) {
+	if ( ! $use_cache || false === ( $post_ids = get_transient( $transient ) ) ) {
+
 		$args = [
 			'max'       => 11,
 			'summarize' => 1,
@@ -105,7 +106,7 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
 		}
 	}
 
-	return $post_ids;
+	return (array) $post_ids;
 }
 
 /**
@@ -238,13 +239,7 @@ function maitp_update_view_count( $post_id = '' ) {
 		return;
 	}
 
-	$views = 0;
-
-	// Return early if we use a too old version of Jetpack.
-	if ( ! function_exists( 'stats_get_from_restapi' ) ) {
-		return $views;
-	}
-
+	$views        = 0;
 	$has_class    = class_exists( 'WPCOM_Stats' );
 	$has_function = function_exists( 'stats_get_from_restapi' );
 
