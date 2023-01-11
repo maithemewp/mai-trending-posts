@@ -276,7 +276,7 @@ final class Mai_Trending_Posts_Plugin {
 				],
 			);
 
-			// If no trending posts, remove this so all time trending shows at least.
+			// Remove if no trending posts.
 			if ( ! $query_args['post__in'] ) {
 				unset( $query_args['post__in'] );
 			}
