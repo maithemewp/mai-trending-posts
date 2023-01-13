@@ -302,7 +302,7 @@ final class Mai_Trending_Posts_Plugin {
 
 		if ( $post_ids ) {
 			// Get matching post ids, including offset and posts per page.
-			$trending  = maitp_get_all_trending( $days = 30, $query_args['post_type'], true );
+			$trending  = maitp_get_all_trending( $days = 7, $query_args['post_type'], true );
 			$intersect = array_intersect( $trending, $post_ids );
 			$post_ids  = array_slice( $intersect, max( 0, $args['offset'] - 1 ), $args['posts_per_page'] + 1, true );
 
