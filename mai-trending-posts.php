@@ -194,7 +194,7 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	function run() {
 		add_shortcode( 'mai_views',                                               [ $this, 'add_shortcode' ] );
-		add_filter( 'mai_post_grid_query_args',                                   [ $this, 'edit_query' ], 10, 2 );
+		add_filter( 'mai_post_grid_query_args',                                   [ $this, 'edit_query' ], 20, 2 );
 		add_filter( 'acf/load_field/key=mai_grid_block_query_by',                 [ $this, 'add_trending_choice' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_views_choice' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies',          [ $this, 'add_show_conditional_logic' ] );
@@ -265,27 +265,58 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	function edit_query( $query_args, $args ) {
 		if ( isset( $args['query_by'] ) && $args['query_by'] && 'trending' === $args['query_by'] ) {
-			$query_args['meta_key'] = maitp_get_key();
-			$query_args['orderby']  = 'meta_value_num';
-			$query_args['post__in'] = maitp_get_trending(
-				[
-					// 'days'      => 3, // TODO: Somehow allow users to set this?
-					'number'    => $query_args['posts_per_page'],
-					'offset'    => isset( $query_args['offset'] ) ? $query_args['offset'] : 0,
-					'post_type' => $query_args['post_type'],
-				],
-			);
-
-			// Remove if no trending posts.
-			if ( ! $query_args['post__in'] ) {
-				unset( $query_args['post__in'] );
-			}
+			$query_args = $this->edit_trending_query( $query_args, $args );
 		}
 
 		if ( isset( $args['orderby'] ) && $args['orderby'] && 'views' === $args['orderby'] ) {
 			$query_args['meta_key'] = maitp_get_key();
 			$query_args['orderby']  = 'meta_value_num';
 		}
+
+		return $query_args;
+	}
+
+	/**
+	 * Modify Mai Post Grid query args for trending posts.
+	 *
+	 * @since TBD
+	 *
+	 * @return array
+	 */
+	function edit_trending_query( $query_args, $args ) {
+		// Build args for a pre-query to get post ids.
+		$new_args                   = $query_args;
+		$new_args['fields']         = 'ids';
+		$new_args['posts_per_page'] = 500;
+		$new_args['meta_key']       = maitp_get_key();
+		$new_args['orderby']        = 'meta_value_num';
+		unset( $new_args['offset'] );
+
+		// Get post ids with new args. Cached if duplicate query since WP 6.1.
+		$query = new WP_Query( $new_args );
+
+		// Set var for post ids.
+		$post_ids = (array) $query->posts;
+		// Exclude any posts.
+		$post_ids = isset( $args['exclude'] ) && $args['exclude'] ? array_diff( $post_ids, $args['exclude'] ) : $post_ids;
+
+		if ( $post_ids ) {
+			// Get matching post ids, including offset and posts per page.
+			$trending  = maitp_get_all_trending( $days = 30, $query_args['post_type'], true );
+			$intersect = array_intersect( $trending, $post_ids );
+			$post_ids  = array_slice( $intersect, max( 0, $args['offset'] - 1 ), $args['posts_per_page'] + 1, true );
+
+			// Set posts.
+			$query_args['post__in'] = $post_ids;
+			$query_args['orderby']  = 'post__in';
+
+			// Unset existing args since we're using post__in now.
+			unset( $query_args['tax_query'] );
+			unset( $query_args['meta_query'] );
+			unset( $query_args['date_query'] );
+		}
+
+		wp_reset_postdata();
 
 		return $query_args;
 	}

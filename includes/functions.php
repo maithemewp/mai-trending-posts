@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * Gets a limited number of trending posts.
  *
  * @since 0.1.0
+ * @since TBD No longer used for Mai Post Grid.
  *
  * @param array $args The args.
  * [
@@ -38,6 +39,7 @@ function maitp_get_trending( $args = [], $use_cache = true ) {
 		return [];
 	}
 
+	// Limit trending count.
 	$trending = $trending ? array_slice( $trending, max( 0, $args['offset'] - 1 ), $args['number'] + 1 ) : $trending;
 
 	return $trending;
@@ -45,7 +47,7 @@ function maitp_get_trending( $args = [], $use_cache = true ) {
 
 /**
  * Gets 100 trending post IDs.
- * Cached for 5 minutes via `stats_get_from_restapi()`.
+ * Cached for 5 minutes via JetPack.
  *
  * @since 0.1.0
  * @since TBD Converted to WPCOM_Stats package.
