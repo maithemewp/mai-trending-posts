@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * Gets a limited number of trending posts.
  *
  * @since 0.1.0
- * @since TBD No longer used for Mai Post Grid.
+ * @since 0.3.0 No longer used for Mai Post Grid.
  *
  * @param array $args The args.
  * [
@@ -50,7 +50,7 @@ function maitp_get_trending( $args = [], $use_cache = true ) {
  * Cached for 5 minutes via JetPack.
  *
  * @since 0.1.0
- * @since TBD Converted to WPCOM_Stats package.
+ * @since 0.2.0 Converted to WPCOM_Stats package.
  *
  * @param int          $days      The number of days to check for trending. Max 30.
  * @param string|array $post_type The post types to get. Either a string 'post' or array [ 'post', 'page' ].
@@ -118,7 +118,7 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
  * @access private
  * @see    https://github.com/Automattic/jetpack/blob/8a79f5e319d5da58de1b8f0bda863957b938bf21/projects/plugins/jetpack/modules/stats.php#L1522-L1538
  *
- * @since TBD
+ * @since 0.3.0
  *
  * @param array $stats_array The stats array.
  *
@@ -226,7 +226,7 @@ function maitp_get_view_count( $post_id = '' ) {
  * Updates view count for a post.
  *
  * @since 0.1.0
- * @since TBD Converted to WPCOM_Stats package.
+ * @since 0.2.0 Converted to WPCOM_Stats package.
  *
  * @param int|string $post_id The post ID.
  *

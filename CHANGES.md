@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0 (1/13/23)
+* Fixed: Full rebuild of Mai Post Grid query for better handling of tax_query.
+
 ## 0.2.1 (1/11/23)
 * Fixed: Trending posts query was not using caching correctly.
 * Changed: Better sanitization of query args.
