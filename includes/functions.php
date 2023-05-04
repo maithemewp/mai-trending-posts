@@ -231,7 +231,7 @@ function maitp_update_view_count( $post_id = '' ) {
 	$stats = maitp_convert_stats_array_to_object( ( new WPCOM_Stats() )->get_post_views( (int) $post_id ) );
 
 	// If we have views.
-	if ( $stats && isset( $stats->views ) ) {
+	if ( $stats && ! is_wp_error( $stats ) && isset( $stats->views ) ) {
 		$views    = absint( $stats->views );
 		$existing = maitp_get_view_count();
 
