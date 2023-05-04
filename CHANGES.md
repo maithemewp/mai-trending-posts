@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 (5/4/23)
+* Fixed: Correct ordering of Trending posts with Mai Post Grid.
+
+## 0.5.0 (5/4/23)
+* Fixed: Better handling of deprecated function from Jetpack.
+
 ## 0.4.0 (5/4/23)
 * Changed: Fully remove deprecated function from Jetpack.
 

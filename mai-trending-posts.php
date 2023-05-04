@@ -4,7 +4,7 @@
  * Plugin Name:     Mai Trending Posts
  * Plugin URI:      https://bizbudding.com/mai-theme/
  * Description:     Show total views and display popular or trending posts in Mai Post Grid. Uses Jetpack Stats.
- * Version:         0.5.0
+ * Version:         0.6.0
  *
  * Author:          BizBudding
  * Author URI:      https://bizbudding.com
@@ -92,7 +92,7 @@ final class Mai_Trending_Posts_Plugin {
 	private function setup_constants() {
 		// Plugin version.
 		if ( ! defined( 'MAI_TRENDING_POSTS_PLUGIN_VERSION' ) ) {
-			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.5.0' );
+			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.6.0' );
 		}
 
 		// Plugin Folder Path.
@@ -427,7 +427,7 @@ final class Mai_Trending_Posts_Plugin {
 		if ( $post_ids ) {
 			// Get matching post ids, including offset and posts per page.
 			$trending  = maitp_get_all_trending( $days = 7, $query_args['post_type'], true );
-			$intersect = array_intersect( $trending, $post_ids );
+			$intersect = array_intersect( $post_ids, $trending );
 			$post_ids  = array_slice( $intersect, max( 0, $args['offset'] - 1 ), $args['posts_per_page'] + 1, true );
 
 			// Set posts.
