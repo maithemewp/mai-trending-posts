@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.0 (5/4/23)
+* Changed: Fully remove deprecated function from Jetpack.
+
 ## 0.3.0 (1/13/23)
 * Fixed: Full rebuild of Mai Post Grid query for better handling of tax_query.
 
