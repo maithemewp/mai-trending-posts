@@ -64,13 +64,6 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
 	$post_type    = array_map( 'strtolower', (array) $post_type );
 	sort( $post_type );
 	$transient    = sprintf( 'mai_trending_%s_%s', implode( '_', $post_type ), $days );
-	$has_class    = class_exists( 'WPCOM_Stats' );
-	// $has_function = function_exists( 'stats_get_from_restapi' );
-	$has_function = false;
-
-	if ( ! ( $has_class || $has_function ) ) {
-		return $post_ids;
-	}
 
 	if ( ! $use_cache || false === ( $post_ids = get_transient( $transient ) ) ) {
 
@@ -80,17 +73,7 @@ function maitp_get_all_trending( $days = 7, $post_type = 'post', $use_cache = tr
 			'num'       => $days,
 		];
 
-		if ( $has_class ) {
-			$stats = maitp_convert_stats_array_to_object( ( new WPCOM_Stats() )->get_top_posts( $args ) );
-
-		} else {
-
-			$stats = false;
-			// $stats = stats_get_from_restapi( [], add_query_arg(
-			// 	$args,
-			// 	'top-posts'
-			// ));
-		}
+		$stats = maitp_convert_stats_array_to_object( ( new WPCOM_Stats() )->get_top_posts( $args ) );
 
 		if ( $stats && ! is_wp_error( $stats ) ) {
 			if ( isset( $stats->summary ) && $stats->summary->postviews ) {
@@ -243,25 +226,12 @@ function maitp_update_view_count( $post_id = '' ) {
 		return;
 	}
 
-	$views        = 0;
-	$has_class    = class_exists( 'WPCOM_Stats' );
-	// $has_function = function_exists( 'stats_get_from_restapi' );
-	$has_function = false;
-
-	if ( ! ( $has_class || $has_function ) ) {
-		return;
-	}
-
 	// Get the data.
-	if ( $has_class ) {
-		$stats = maitp_convert_stats_array_to_object( ( new WPCOM_Stats() )->get_post_views( (int) $post_id ) );
-	} else {
-		$stats = false;
-		// $stats = stats_get_from_restapi( [ 'fields' => 'views' ], sprintf( 'post/%d', (int) $post_id ) );
-	}
+	$views = 0;
+	$stats = maitp_convert_stats_array_to_object( ( new WPCOM_Stats() )->get_post_views( (int) $post_id ) );
 
 	// If we have views.
-	if ( isset( $stats ) && ! empty( $stats ) && isset( $stats->views ) ) {
+	if ( $stats && isset( $stats->views ) ) {
 		$views    = absint( $stats->views );
 		$existing = maitp_get_view_count();
 

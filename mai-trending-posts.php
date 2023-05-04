@@ -411,7 +411,8 @@ final class Mai_Trending_Posts_Plugin {
 	}
 
 	/**
-	 * If Jetpack is active.
+	 * If Jetpack is active, and it's a recent enough
+	 * version to include the `WPCOM_Stats` class.
 	 *
 	 * @since 0.1.0
 	 *
@@ -424,7 +425,7 @@ final class Mai_Trending_Posts_Plugin {
 			return $has;
 		}
 
-		$has = class_exists( 'Jetpack' );
+		$has = class_exists( 'Jetpack' ) && class_exists( 'WPCOM_Stats' );
 
 		return $has;
 	}
@@ -451,9 +452,6 @@ final class Mai_Trending_Posts_Plugin {
 	/**
 	 * Updates view counts as post meta.
 	 * Retrieve views using the WordPress.com Stats API.
-	 * The `stats_get_from_restapi()` function is cached for 5 minutes, so no caching needed here.
-	 *
-	 * @link https://github.com/Automattic/jetpack/blob/trunk/projects/plugins/jetpack/modules/stats.php#L1636
 	 *
 	 * @since 0.1.0
 	 *
