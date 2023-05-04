@@ -4,7 +4,7 @@
  * Plugin Name:     Mai Trending Posts
  * Plugin URI:      https://bizbudding.com/mai-theme/
  * Description:     Show total views and display popular or trending posts in Mai Post Grid. Uses Jetpack Stats.
- * Version:         0.4.0
+ * Version:         0.5.0
  *
  * Author:          BizBudding
  * Author URI:      https://bizbudding.com
@@ -12,6 +12,9 @@
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) exit;
+
+// Must be at the top of the file.
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 /**
  * Main Mai_Trending_Posts_Plugin Class.
@@ -87,10 +90,9 @@ final class Mai_Trending_Posts_Plugin {
 	 * @return  void
 	 */
 	private function setup_constants() {
-
 		// Plugin version.
 		if ( ! defined( 'MAI_TRENDING_POSTS_PLUGIN_VERSION' ) ) {
-			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.4.0' );
+			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.5.0' );
 		}
 
 		// Plugin Folder Path.
@@ -156,18 +158,13 @@ final class Mai_Trending_Posts_Plugin {
 	 * @return void
 	 */
 	public function updater() {
-		// Bail if current user cannot manage plugins.
-		if ( ! current_user_can( 'install_plugins' ) ) {
-			return;
-		}
-
 		// Bail if plugin updater is not loaded.
-		if ( ! class_exists( 'Puc_v4_Factory' ) ) {
+		if ( ! class_exists( 'YahnisElsts\PluginUpdateChecker\v5\PucFactory' ) ) {
 			return;
 		}
 
 		// Setup the updater.
-		$updater = Puc_v4_Factory::buildUpdateChecker( 'https://github.com/maithemewp/mai-trending-posts/', __FILE__, 'mai-trending-posts' );
+		$updater = PucFactory::buildUpdateChecker( 'https://github.com/maithemewp/mai-trending-posts/', __FILE__, 'mai-trending-posts' );
 
 		// Maybe set github api token.
 		if ( defined( 'MAI_GITHUB_API_TOKEN' ) ) {
@@ -194,7 +191,6 @@ final class Mai_Trending_Posts_Plugin {
 	 */
 	function run() {
 		add_shortcode( 'mai_views',                                               [ $this, 'add_shortcode' ] );
-		add_filter( 'mai_post_grid_query_args',                                   [ $this, 'edit_query' ], 20, 2 );
 		add_filter( 'acf/load_field/key=mai_grid_block_query_by',                 [ $this, 'add_trending_choice' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_views_choice' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_post_taxonomies',          [ $this, 'add_show_conditional_logic' ] );
@@ -205,8 +201,9 @@ final class Mai_Trending_Posts_Plugin {
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',              [ $this, 'add_hide_conditional_logic' ] );
 
 		// Ready to go.
-		if ( $this->has_jetpack() && $this->has_stats() ) {
-			add_action( 'wp_footer', [ $this, 'update_views' ] );
+		if ( $this->should_run() ) {
+			add_filter( 'mai_post_grid_query_args', [ $this, 'edit_query' ], 20, 2 );
+			add_action( 'wp_footer',                [ $this, 'update_views' ] );
 
 			// Add Stats to REST API Post response.
 			if ( function_exists( 'register_rest_field' ) ) {
@@ -255,72 +252,6 @@ final class Mai_Trending_Posts_Plugin {
 
 		return maitp_get_views( $atts );
 	}
-
-	/**
-	 * Modify Mai Post Grid query args.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array
-	 */
-	function edit_query( $query_args, $args ) {
-		if ( isset( $args['query_by'] ) && $args['query_by'] && 'trending' === $args['query_by'] ) {
-			$query_args = $this->edit_trending_query( $query_args, $args );
-		}
-
-		if ( isset( $args['orderby'] ) && $args['orderby'] && 'views' === $args['orderby'] ) {
-			$query_args['meta_key'] = maitp_get_key();
-			$query_args['orderby']  = 'meta_value_num';
-		}
-
-		return $query_args;
-	}
-
-	/**
-	 * Modify Mai Post Grid query args for trending posts.
-	 *
-	 * @since 0.3.0
-	 *
-	 * @return array
-	 */
-	function edit_trending_query( $query_args, $args ) {
-		// Build args for a pre-query to get post ids.
-		$new_args                   = $query_args;
-		$new_args['fields']         = 'ids';
-		$new_args['posts_per_page'] = 500;
-		$new_args['meta_key']       = maitp_get_key();
-		$new_args['orderby']        = 'meta_value_num';
-		unset( $new_args['offset'] );
-
-		// Get post ids with new args. Cached if duplicate query since WP 6.1.
-		$query = new WP_Query( $new_args );
-
-		// Set var for post ids.
-		$post_ids = (array) $query->posts;
-		// Exclude any posts.
-		$post_ids = isset( $args['exclude'] ) && $args['exclude'] ? array_diff( $post_ids, $args['exclude'] ) : $post_ids;
-
-		if ( $post_ids ) {
-			// Get matching post ids, including offset and posts per page.
-			$trending  = maitp_get_all_trending( $days = 7, $query_args['post_type'], true );
-			$intersect = array_intersect( $trending, $post_ids );
-			$post_ids  = array_slice( $intersect, max( 0, $args['offset'] - 1 ), $args['posts_per_page'] + 1, true );
-
-			// Set posts.
-			$query_args['post__in'] = $post_ids;
-			$query_args['orderby']  = 'post__in';
-
-			// Unset existing args since we're using post__in now.
-			unset( $query_args['tax_query'] );
-			unset( $query_args['meta_query'] );
-			unset( $query_args['date_query'] );
-		}
-
-		wp_reset_postdata();
-
-		return $query_args;
-	}
-
 	/**
 	 * Adds Trending as an "Get Entries By" choice.
 	 *
@@ -411,8 +342,7 @@ final class Mai_Trending_Posts_Plugin {
 	}
 
 	/**
-	 * If Jetpack is active, and it's a recent enough
-	 * version to include the `WPCOM_Stats` class.
+	 * If Jetpack is active.
 	 *
 	 * @since 0.1.0
 	 *
@@ -425,13 +355,14 @@ final class Mai_Trending_Posts_Plugin {
 			return $has;
 		}
 
-		$has = class_exists( 'Jetpack' ) && class_exists( 'WPCOM_Stats' );
+		$has = class_exists( 'Jetpack' );
 
 		return $has;
 	}
 
 	/**
-	 * If Jetpack Stats is active.
+	 * If Jetpack Stats is active,
+	 * including a version current enough to utilize WPCOM_Stats class.
 	 *
 	 * @since 0.1.0
 	 *
@@ -444,9 +375,74 @@ final class Mai_Trending_Posts_Plugin {
 			return $has;
 		}
 
-		$has  = $this->has_jetpack() && Jetpack::is_module_active( 'stats' );
+		$has = $this->has_jetpack() && Jetpack::is_module_active( 'stats' ) && class_exists( 'Automattic\Jetpack\Stats\WPCOM_Stats' );
 
 		return $has;
+	}
+
+	/**
+	 * Modify Mai Post Grid query args.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array
+	 */
+	function edit_query( $query_args, $args ) {
+		if ( isset( $args['query_by'] ) && $args['query_by'] && 'trending' === $args['query_by'] ) {
+			$query_args = $this->edit_trending_query( $query_args, $args );
+		}
+
+		if ( isset( $args['orderby'] ) && $args['orderby'] && 'views' === $args['orderby'] ) {
+			$query_args['meta_key'] = maitp_get_key();
+			$query_args['orderby']  = 'meta_value_num';
+		}
+
+		return $query_args;
+	}
+
+	/**
+	 * Modify Mai Post Grid query args for trending posts.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array
+	 */
+	function edit_trending_query( $query_args, $args ) {
+		// Build args for a pre-query to get post ids.
+		$new_args                   = $query_args;
+		$new_args['fields']         = 'ids';
+		$new_args['posts_per_page'] = 500;
+		$new_args['meta_key']       = maitp_get_key();
+		$new_args['orderby']        = 'meta_value_num';
+		unset( $new_args['offset'] );
+
+		// Get post ids with new args. Cached if duplicate query since WP 6.1.
+		$query = new WP_Query( $new_args );
+
+		// Set var for post ids.
+		$post_ids = (array) $query->posts;
+		// Exclude any posts.
+		$post_ids = isset( $args['exclude'] ) && $args['exclude'] ? array_diff( $post_ids, $args['exclude'] ) : $post_ids;
+
+		if ( $post_ids ) {
+			// Get matching post ids, including offset and posts per page.
+			$trending  = maitp_get_all_trending( $days = 7, $query_args['post_type'], true );
+			$intersect = array_intersect( $trending, $post_ids );
+			$post_ids  = array_slice( $intersect, max( 0, $args['offset'] - 1 ), $args['posts_per_page'] + 1, true );
+
+			// Set posts.
+			$query_args['post__in'] = $post_ids;
+			$query_args['orderby']  = 'post__in';
+
+			// Unset existing args since we're using post__in now.
+			unset( $query_args['tax_query'] );
+			unset( $query_args['meta_query'] );
+			unset( $query_args['date_query'] );
+		}
+
+		wp_reset_postdata();
+
+		return $query_args;
 	}
 
 	/**

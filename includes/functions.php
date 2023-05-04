@@ -3,6 +3,8 @@
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+use Automattic\Jetpack\Stats\WPCOM_Stats;
+
 /**
  * Gets a limited number of trending posts.
  *
