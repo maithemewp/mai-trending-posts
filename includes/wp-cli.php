@@ -55,10 +55,10 @@ class Mai_Trending_Posts_CLI {
 			return;
 		}
 
-		if ( ! function_exists( 'stats_get_from_restapi' ) ) {
-			WP_CLI::error( 'stats_get_from_restapi function does not exist.' );
-			return;
-		}
+		// if ( ! function_exists( 'stats_get_from_restapi' ) ) {
+		// 	WP_CLI::error( 'stats_get_from_restapi function does not exist.' );
+		// 	return;
+		// }
 
 		$query = new WP_Query(
 			[
