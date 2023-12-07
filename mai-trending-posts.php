@@ -200,6 +200,9 @@ final class Mai_Trending_Posts_Plugin {
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_orderby',            [ $this, 'add_hide_conditional_logic' ] );
 		add_filter( 'acf/load_field/key=mai_grid_block_posts_order',              [ $this, 'add_hide_conditional_logic' ] );
 
+		add_filter( 'ep_prepare_meta_allowed_keys',                               [ $this, 'elasticpress_meta_keys_manual' ], 10, 2 );
+		add_filter( 'ep_prepare_meta_whitelist_key',                              [ $this, 'elasticpress_meta_keys_auto' ], 10, 3 );
+
 		// Ready to go.
 		if ( $this->should_run() ) {
 			add_filter( 'mai_post_grid_query_args', [ $this, 'edit_query' ], 20, 2 );
@@ -252,6 +255,7 @@ final class Mai_Trending_Posts_Plugin {
 
 		return maitp_get_views( $atts );
 	}
+
 	/**
 	 * Adds Trending as an "Get Entries By" choice.
 	 *
@@ -268,7 +272,7 @@ final class Mai_Trending_Posts_Plugin {
 	}
 
 	/**
-	 * Adds Views as an "Ordery By" choice.
+	 * Adds Views as an "Order By" choice.
 	 *
 	 * @since 0.1.0
 	 *
@@ -328,6 +332,43 @@ final class Mai_Trending_Posts_Plugin {
 		];
 
 		return $field;
+	}
+
+	/**
+	 * Allow meta keys to be indexed by ElasticPress
+	 * when the meta mode is set to `manual` via the `ep_meta_mode` hook.
+	 *
+	 * @since TBD
+	 *
+	 * @param array   $keys Allowed keys
+	 * @param WP_Post $post Post object
+	 *
+	 * @return array
+	 */
+	function elasticpress_meta_keys_manual( $keys, $post ) {
+		$keys[] = maitp_get_key();
+
+		return $keys;
+	}
+
+	/**
+	 * Allow meta keys to be indexed by ElasticPress
+	 * when the meta mode is set to `auto` via the `ep_meta_mode` hook.
+	 *
+	 * @since TBD
+	 *
+	 * @param bool    $allow Whether to allow the meta key.
+	 * @param string  $key   The meta key name.
+	 * @param WP_Post $post  The post object.
+	 *
+	 * @return bool
+	 */
+	function elasticpress_meta_keys_auto( $allow, $key, $post ) {
+		if ( in_array( $key, [ maitp_get_key() ] ) ) {
+			$allow = true;
+		}
+
+		return $allow;
 	}
 
 	/**

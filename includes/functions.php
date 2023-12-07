@@ -150,7 +150,7 @@ function maitp_get_views( $atts = [] ) {
 			'margin_left'   => '0',
 		],
 		$atts,
-		'post_views'
+		'mai_views'
 	);
 
 	// Sanitize.
@@ -272,7 +272,7 @@ function maitp_get_short_number( int $number ) {
 		return sprintf( '%d%s', floor( $number / 1000000000 ), 'B+' );
 	}
 
-	return sprintf('%d%s', floor( $number / 1000000000000 ), 'T+' );
+	return sprintf( '%d%s', floor( $number / 1000000000000 ), 'T+' );
 };
 
 /**
