@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.1 (12/7/23)
+* Changed: Register meta key with Elasticpress.
+
 ## 0.6.0 (5/4/23)
 * Fixed: Correct ordering of Trending posts with Mai Post Grid.
 

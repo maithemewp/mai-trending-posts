@@ -4,7 +4,7 @@
  * Plugin Name:     Mai Trending Posts
  * Plugin URI:      https://bizbudding.com/mai-theme/
  * Description:     Show total views and display popular or trending posts in Mai Post Grid. Uses Jetpack Stats.
- * Version:         0.6.0
+ * Version:         0.6.1
  *
  * Author:          BizBudding
  * Author URI:      https://bizbudding.com
@@ -92,7 +92,7 @@ final class Mai_Trending_Posts_Plugin {
 	private function setup_constants() {
 		// Plugin version.
 		if ( ! defined( 'MAI_TRENDING_POSTS_PLUGIN_VERSION' ) ) {
-			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.6.0' );
+			define( 'MAI_TRENDING_POSTS_PLUGIN_VERSION', '0.6.1' );
 		}
 
 		// Plugin Folder Path.
@@ -338,7 +338,7 @@ final class Mai_Trending_Posts_Plugin {
 	 * Allow meta keys to be indexed by ElasticPress
 	 * when the meta mode is set to `manual` via the `ep_meta_mode` hook.
 	 *
-	 * @since TBD
+	 * @since 0.6.1
 	 *
 	 * @param array   $keys Allowed keys
 	 * @param WP_Post $post Post object
@@ -355,7 +355,7 @@ final class Mai_Trending_Posts_Plugin {
 	 * Allow meta keys to be indexed by ElasticPress
 	 * when the meta mode is set to `auto` via the `ep_meta_mode` hook.
 	 *
-	 * @since TBD
+	 * @since 0.6.1
 	 *
 	 * @param bool    $allow Whether to allow the meta key.
 	 * @param string  $key   The meta key name.
